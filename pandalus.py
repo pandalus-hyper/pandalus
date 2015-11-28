@@ -18,6 +18,15 @@ import json
 import time
 import datetime
 import subprocess
+import geoip2.database
+
+import random
+
+randIP = ["8.8.8.8", "2.60.8.8", "1.0.1.1", "203.178.135.4", "93.158.236.1", "1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4", "5.5.5.5"]
+
+geoip = geoip2.database.Reader('./GeoLite2-City.mmdb')
+
+retjson = ""
 
 def pcap2json(f):
     """pcap -> json, print"""
@@ -36,6 +45,8 @@ def pcap2json(f):
     _L2TP = 115
 
     pkts = rdpcap(f)
+    newj = {}
+    newp = []
     for pkt in pkts:
         TS = pkt.time
         
@@ -65,13 +76,44 @@ def pcap2json(f):
         else:
             continue
 
+	try:
+		sres = geoip.city(SA)
+	except Exception as e:
+		sres = geoip.city(randIP[random.randint(0, len(randIP)-1)])
+	try:
+		dres = geoip.city(DA)
+	except Exception as e:
+		dres = geoip.city(randIP[random.randint(0, len(randIP)-1)])
+
+	srccount = sres.country.name
+	srclat = sres.location.latitude
+	srclog = sres.location.longitude
+	dstcount = dres.country.name
+	dstlat = dres.location.latitude
+	dstlog = dres.location.longitude
+
         ### print ###
-        socketio.emit('a',{"time"  :   TS,
+	newp.append(json.dumps({"time"  :   TS,
                           "sip"   :   SA,
                           "dip"   :   DA,
                           "proto" :   PR,
                           "sport" :   SP,
-                          "dport" :   DP})
+                          "dport" :   DP,
+			  "srccount" : srccount, 
+			  "srclat" : srclat,
+			  "srclog" : srclog,
+			  "dstcount" : dstcount,
+			  "dstlat" : dstlat,
+                	  "dstlog" : dstlog
+			},
+			separators=(',',':')))
+    newj["data"] = newp
+    retjson = newj
+
+    print retjson
+    print "emit"
+    socketio.emit('pktdata', {'data': retjson})
+    print "emit fin"
 
 def tcpdump():
     command = 'tcpdump -i eth0 -G 1 -Uw ./traffic/%S.pcap'.split(' ')
@@ -129,10 +171,8 @@ def index() :
 
 
 
-
 if __name__ == "__main__" :
   t=threading.Thread(target=camera_thread)
   t.setDaemon(True)
   t.start()
-
   socketio.run(app, host="0.0.0.0", port=5002)
