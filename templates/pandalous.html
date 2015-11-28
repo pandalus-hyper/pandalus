@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pandalous</title>
+
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{url_for('static', filename='hacker.css')}}" rel="stylesheet"/>
+    <link rel="stylesheet" href="{{url_for('static', filename='jquery-jvectormap-2.0.3.css')}}" type="text/css" media="screen"/>
+
+    <!--[if lt IE 9]
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+
+  <body>
+
+    <!--navgation bar-->
+    <nav class="navbar navbar-inverse">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <!--toggle botton for smart phone-->
+          <button type="button" class="navbar-toggle collapsed" 
+            data-toggle="collapse" data-target="#navbar" aria-expanded="false" 
+            aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <!--logo-->
+          <a class="navbar-brand" href="#">Pandalous</a>
+        </div>
+
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="#">Home</a></li>
+            <li><a href="#">About</a></li>
+            <li><a href="#">Menu</a></li>
+            <li><a href="#">hogehoge</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+
+      </div><!--/.container-fluid -->
+    </nav>
+
+
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-xs-2">
+          <table class="table text-danger">
+            <thead>
+              <tr><th>SRC</th><th>DEST</th><th>PORT</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>choruru</td><td>taisho</td><td>22</td></tr>
+              <tr><td>motomu</td><td>taisho</td><td>80</td></tr>
+              <tr><td>hogehoge</td><td>taisho</td><td>443</td></tr>
+              <tr><td>hogehoge</td><td>taisho</td><td>443</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-xs-10">
+          <!--map-->
+          <div id="map" style="width: 80vw; height: 80vh;">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+    <button onclick="add();">add()</button>
+    </div>
+
+    <div class="container-fluid">
+    Footer
+    </div>
+
+    <link href="{{url_for('static', filename='hacker.css')}}" rel="stylesheet"/>
+
+    <script src="{{url_for('static', filename='jquery-1.11.3.js')}}"></script>
+    <script src="{{url_for('static', filename='jquery-jvectormap-2.0.3.min.js')}}"></script>
+    <script src="{{url_for('static', filename='jquery-jvectormap-world-mill.js')}}"></script>
+    <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+
+    <script type="text/javascript">
+      var map;
+      var objs = [];
+
+      function draw() {
+        for(i = 0; i < objs.length; i++){
+          obj = objs[i];
+          console.log(obj);
+          dst = map.latLngToPoint(obj.src[0], obj.src[1]);
+          src = map.latLngToPoint(obj.dst[0], obj.dst[1]);
+          obj.$.attr({
+            d: "M "+src.x+','+src.y+' A 100,50 0 1,1 '+dst.x+','+dst.y,
+            stroke: "red",
+            fill: "none"
+          })
+        }
+      }
+
+      function resize(){
+        draw();
+      }
+
+      function $s(elem) {
+        return $(document.createElementNS('http://www.w3.org/2000/svg', elem));
+      }
+
+      $(function(){
+        $('#map').vectorMap({
+          map: 'world_mill',
+          onViewportChange: resize,
+        });
+        $('#map .jvectormap-container svg').append($s("g").attr("id", "geo"));
+        map = $('#map').vectorMap('get', 'mapObject');
+        console.log(map);
+        
+        $(window).resize(resize);
+      });
+      
+
+      function add(){
+        var $path = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+
+        objs.push({
+          src:[37, -122],
+          dst:[35, 139],
+          $:$path
+        });
+
+        $('#geo').prepend($path);
+        draw();
+      }
+    </script>
+  </body>
+</html>
