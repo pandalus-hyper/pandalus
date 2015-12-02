@@ -22,7 +22,7 @@ import geoip2.database
 
 import random
 
-randIP = ["8.8.8.8", "2.60.8.8", "1.0.1.1", "203.178.135.4", "93.158.236.1", "1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4", "5.5.5.5"]
+randIP = ["8.8.8.8", "2.60.8.8", "1.0.1.1", "203.178.135.4", "93.158.236.1"]
 
 geoip = geoip2.database.Reader('./GeoLite2-City.mmdb')
 
@@ -83,7 +83,7 @@ def pcap2json(f):
 	try:
 		dres = geoip.city(DA)
 	except Exception as e:
-		dres = geoip.city(randIP[random.randint(0, len(randIP)-1)])
+		dres = geoip.city("8.8.8.8")
 
 	srccount = sres.country.name
 	srclat = sres.location.latitude

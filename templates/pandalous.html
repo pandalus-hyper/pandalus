@@ -86,56 +86,146 @@
     <script src="{{url_for('static', filename='jquery-jvectormap-2.0.3.min.js')}}"></script>
     <script src="{{url_for('static', filename='jquery-jvectormap-world-mill.js')}}"></script>
     <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
 
     <script type="text/javascript">
       var map;
       var objs = [];
-
-      function draw() {
-        for(i = 0; i < objs.length; i++){
-          obj = objs[i];
-          dst = map.latLngToPoint(obj.src[0], obj.src[1]);
-          src = map.latLngToPoint(obj.dst[0], obj.dst[1]);
-          obj.$.attr({
-            d: "M "+src.x+','+src.y+' A 100,50 0 1,1 '+dst.x+','+dst.y,
-            stroke: "red",
-            fill: "none"
-          })
-        }
-      }
-
-      function resize(){
-        draw();
-      }
-
-      function $s(elem) {
-        return $(document.createElementNS('http://www.w3.org/2000/svg', elem));
-      }
+      var flow;
+      var flownum = 0;
 
       $(function(){
         $('#map').vectorMap({
           map: 'world_mill',
           onViewportChange: resize,
         });
-        $('#map .jvectormap-container svg').append($s("g").attr("id", "geo"));
+
+	map = document.getElementById("map"); 
+	var svg = map.getElementsByTagName("svg");
+	svg[0].id = "marker"
+        flow = d3.select("#marker");
         map = $('#map').vectorMap('get', 'mapObject');
-        console.log(map);
-        
         $(window).resize(resize);
       });
+
+
+     function drawpkt(fnumber, id, totalpkt, cx, cy){
+	  	var pathid = "path" + fnumber.toString();
+    		flow.select('#' + "circle" + fnumber.toString() + "-" + id.toString())
+    		.transition()
+    		.duration(700+(1000)/totalpkt*id)
+    		.ease("sin")
+    		.attrTween(
+      			'transform', function(d) {
+				  return function(t) {
+      	    				var p = flow.select("#"+pathid).node().getPointAtLength(flow.select("#"+pathid).node().getTotalLength()*t);
+					if(t == 1){
+						if(id == totalpkt-1){
+      	    				flow.select("#"+pathid).remove();
+						}
+    					flow.select('#' + "circle" + fnumber.toString() + "-" + id.toString()).remove();
+					}
+      	    				return "translate(" + (p.x-cx) + "," + (p.y - cy) + ")";
+				  }
+      			}
+      	    	)
+     };
+
+
+     function drawflow(obg, fnumber){
+          dst = map.latLngToPoint(obj.src[0], obj.src[1]);
+          src = map.latLngToPoint(obj.dst[0], obj.dst[1]);
+    	  var x1 = src.x;
+    	  var y1 = src.y;
+    	  var x2 = dst.x;
+    	  var y2 = dst.y;
+    	  var cx = x1;
+    	  var cy = y1;
+    	  var vx1 = 100;
+    	  var vy1 = 0;
+    	  var vx2 = x2 - x1;
+    	  var vy2 = y2 - y1;
+    	  var sita = 360 * Math.atan2(vx1*vy2 - vy1*vx2, vx1*vx2+vy1*vy2)/2/Math.PI
+    	  var rx = Math.sqrt((x2-x1)*(x2-x1) + (y2 - y1)*(y2-y1))/2;
+    	  var ry = rx/2;
+	  var pathid = "path" + fnumber.toString();
+	  var circleids = [];
+	  for(id = 0; id < 10; id++){
+		  circleids.push("circle" + fnumber.toString() + "-" + id.toString());
+	  }
+	  var circleid = "circle" + fnumber.toString();
+	flow.append('path')
+	.attr({
+            'id':pathid,
+            'd': "M" + x1 + " " + y1 + " A " + rx + " " + ry +"  "+ sita  +" 0 1 " + x2 + " " + y2,
+            'stroke': 'none',
+            'fill': 'none',
+            'stroke-width': 2,
+          });
+
+
+	  for(id = 0; id < circleids.length; id++){
+	flow.append('circle')
+	.attr({
+            'id': "circle" + fnumber.toString() + "-" + id.toString(),
+            'cx': cx,
+            'cy': cy,
+            'r': 5,
+	    'fill':"red",
+          });
+	  }
+
+	  for(id = 0; id < circleids.length; id++){
+		drawpkt(fnumber, id, circleids.length, cx, cy);
+	  };
+
+
+
+
+     }
+
+
+      function drawflows() {
+        for(i = 0; i < objs.length; i++){
+          obj = objs[i];
+	  drawflow(obj, flownum);
+	  flownum += 1;
+	  if(flownum == 1000000){
+		  flownum = 0;
+	  }
+      };
+      objs = [];
+      };
+
+
+
+
+
+      function resize(){
+	//alert("resie draw");
+        //draw();
+      }
+
+      function $s(elem) {
+        return $(document.createElementNS('http://www.w3.org/2000/svg', elem));
+      }
+
       
 
       function add(){
         var $path = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+        var $circle = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'));
 
         objs.push({
           src:[37, -122],
           dst:[35, 139],
-          $:$path
+        });
+        objs.push({
+          src:[50, -100],
+          dst:[80, 50],
         });
 
-        $('#geo').prepend($path);
-        draw();
+        drawflows();
       }
     </script>
 
@@ -143,31 +233,24 @@
     <script type="text/javascript" charset="utf-8">
         $(document).ready(function(){
             namespace = ''; // change to an empty string to use the global namespace
-
-            // the socket.io documentation recommends sending an explicit package upon connection
-            // this is specially important when using the global namespace
             var socket = io.connect('http://' + document.domain + ':' + location.port + namespace);
-
-            // event handler for server sent data
-            // the data is displayed in the "Received" section of the page
-            socket.on('pktdata', function(msg) {
-		    var $path = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-		    objs = []
+	    socket.on('pktdata', function(msg) {
 		    for (var i = 0; i < msg.data["data"].length; i++) {
 		    obj = jQuery.parseJSON(msg.data["data"][i]);
 		    objs.push({
 			src:[Number(obj["srclat"]), Number(obj["srclog"])],
 			dst:[Number(obj["dstlat"]), Number(obj["dstlog"])],
-			$:$path
 			});
-		//	console.log("src", Number(msg.data["data"][i]["srclat"]), Number(msg.data["data"][i]["srclog"]))
-		//	console.log("dst", Number(msg.data["data"][i]["dstlat"]), Number(msg.data["data"][i]["dstlog"]))
+
 		    };
-		    $('#geo').prepend($path);
-		    draw();
-            });
+        drawflows();
+		    });
 
         });
+
+
+
+
     </script>
   </body>
 </html>
