@@ -123,6 +123,21 @@
             return function(t) {
               var p = flowmarker.select("#"+pathid).node().getPointAtLength(flowmarker.select("#"+pathid).node().getTotalLength()*t);
               if(t == 1){
+		  var bomb = flowmarker.append("circle")
+		  	.attr("id", circleid + "bomb")
+                	.attr("cx", p.x)
+                	.attr("cy", p.y)
+                	.attr("r", 3)
+			.attr("stroke", "rgba(255, 0, 0, 1.0)")
+                	.attr("fill", "none");
+			
+			bomb.transition().duration(2000)
+			        .attr("r",50)
+				.attr("stroke","rgba(255, 0, 0, 0)")
+				.each("end", function() {flowmarker.select("#" + circleid + "bomb").remove()});
+
+
+
                 if(circleid == totalpkt-1){
                   flowmarker.select("#"+pathid).remove();
                   flows.
@@ -209,8 +224,8 @@
           }
         };
         //init flows everytime when recieved data from the socket
-        //flows = [];
-        //flowcnt = 0;
+        flows = [];
+        flowcnt = 0;
       };
 
 
