@@ -51,7 +51,15 @@
 
     <div class="container-fluid">
       <div class="row">
-        <div class="col-xs-2">
+
+        <div class="col-xs-12">
+          <!--map-->
+          <div id="map" style="width: 100vw; height: 95vh;">
+          </div>
+        </div>
+
+<!--
+        <div class="col-xs-1">
           <table class="table text-danger">
             <thead>
               <tr><th>SRC</th><th>DEST</th><th>PORT</th></tr>
@@ -64,11 +72,7 @@
             </tbody>
           </table>
         </div>
-        <div class="col-xs-10">
-          <!--map-->
-          <div id="map" style="width: 80vw; height: 80vh;">
-          </div>
-        </div>
+-->
       </div>
     </div>
 
@@ -81,18 +85,19 @@
     </div>
 
     <link href="{{url_for('static', filename='hacker.css')}}" rel="stylesheet"/>
-
     <script src="{{url_for('static', filename='jquery-1.11.3.js')}}"></script>
     <script src="{{url_for('static', filename='jquery-jvectormap-2.0.3.min.js')}}"></script>
     <script src="{{url_for('static', filename='jquery-jvectormap-world-mill.js')}}"></script>
+    <script src="{{url_for('static', filename='md5.js')}}"></script>
     <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
     <script src="http://d3js.org/d3.v3.min.js"></script>
 
+    <!-- for flow control -->
     <script type="text/javascript">
       var map;
-      var objs = [];
-      var flow;
-      var flownum = 0;
+      var flows = {};
+      var flowmarker;
+      var flowcnt = 0; //also used as 
 
       $(function(){
         $('#map').vectorMap({
@@ -100,157 +105,181 @@
           onViewportChange: resize,
         });
 
-	map = document.getElementById("map"); 
-	var svg = map.getElementsByTagName("svg");
-	svg[0].id = "marker"
-        flow = d3.select("#marker");
-        map = $('#map').vectorMap('get', 'mapObject');
-        $(window).resize(resize);
-      });
+      map = document.getElementById("map"); 
+      var g = map.getElementsByTagName("svg")[0].getElementsByTagName("g");
+      g[1].id = "marker"
+          flowmarker = d3.select("#marker");
+          map = $('#map').vectorMap('get', 'mapObject');
+          $(window).resize(resize);
+        });
 
 
-     function drawpkt(fnumber, id, totalpkt, cx, cy){
-	  	var pathid = "path" + fnumber.toString();
-    		flow.select('#' + "circle" + fnumber.toString() + "-" + id.toString())
-    		.transition()
-    		.duration(700+(1000)/totalpkt*id)
-    		.ease("sin")
-    		.attrTween(
-      			'transform', function(d) {
-				  return function(t) {
-      	    				var p = flow.select("#"+pathid).node().getPointAtLength(flow.select("#"+pathid).node().getTotalLength()*t);
-					if(t == 1){
-						if(id == totalpkt-1){
-      	    				flow.select("#"+pathid).remove();
-						}
-    					flow.select('#' + "circle" + fnumber.toString() + "-" + id.toString()).remove();
-					}
-      	    				return "translate(" + (p.x-cx) + "," + (p.y - cy) + ")";
-				  }
-      			}
-      	    	)
-     };
+      function drawpkt(pathid, circleid, circleindex, totalpkt, cx, cy){
+        flowmarker.select('#' + circleid)
+          .transition()
+          .duration(700+(1000)/totalpkt*circleindex)
+          .ease("sin")
+          .attrTween('transform', function(d) {
+            return function(t) {
+              var p = flowmarker.select("#"+pathid).node().getPointAtLength(flowmarker.select("#"+pathid).node().getTotalLength()*t);
+              if(t == 1){
+                if(circleid == totalpkt-1){
+                  flowmarker.select("#"+pathid).remove();
+                  flows.
+                  flowcnt -= 1;
+                }
+                flowmarker.select('#' + circleid).remove();
+              }
+              return "translate(" + (p.x-cx) + "," + (p.y-cy) + ")";
+            }
+          })
+      };
 
 
-     function drawflow(obg, fnumber){
-          dst = map.latLngToPoint(obj.src[0], obj.src[1]);
-          src = map.latLngToPoint(obj.dst[0], obj.dst[1]);
-    	  var x1 = src.x;
-    	  var y1 = src.y;
-    	  var x2 = dst.x;
-    	  var y2 = dst.y;
-    	  var cx = x1;
-    	  var cy = y1;
-    	  var vx1 = 100;
-    	  var vy1 = 0;
-    	  var vx2 = x2 - x1;
-    	  var vy2 = y2 - y1;
-    	  var sita = 360 * Math.atan2(vx1*vy2 - vy1*vx2, vx1*vx2+vy1*vy2)/2/Math.PI
-    	  var rx = Math.sqrt((x2-x1)*(x2-x1) + (y2 - y1)*(y2-y1))/2;
-    	  var ry = rx/2;
-	  var pathid = "path" + fnumber.toString();
-	  var circleids = [];
-	  for(id = 0; id < 10; id++){
-		  circleids.push("circle" + fnumber.toString() + "-" + id.toString());
-	  }
-	  var circleid = "circle" + fnumber.toString();
-	flow.append('path')
-	.attr({
+      function drawflow(flowkey){
+        var flow = flows[flowkey];
+        var src = map.latLngToPoint(flow.src[0], flow.src[1]);
+        var dst = map.latLngToPoint(flow.dst[0], flow.dst[1]);
+        var x1 = 100;
+        var y1 = 0;
+        var x2 = dst.x - src.x;
+        var y2 = dst.y - dst.y;
+        var theta = 360 * Math.atan2(x1*y2-y1*x2, x1*x2+y1*y2)/2/Math.PI
+        var rx = Math.sqrt((dst.x-src.x)*(dst.x-src.x) + (dst.y-src.y)*(dst.y-src.y))/2;
+        var ry = rx/2;
+        var pathid = "path" + flowkey;
+        var circleids = [];
+        var circleid;
+
+        // push circle
+        for(var i = 0; i < 10; i++){  //max : 10 paths
+            circleid = "circle" + flowkey + "-" + i.toString();
+            circleids.push(circleid);
+        }
+
+        // append path
+        flowmarker.append('path').attr({
             'id':pathid,
-            'd': "M" + x1 + " " + y1 + " A " + rx + " " + ry +"  "+ sita  +" 0 1 " + x2 + " " + y2,
+            'd': "M" + src.x + " " + src.y + " A " + rx + " " + ry +"  "+ theta  +" 0 1 " + dst.x + " " + dst.y,
             'stroke': 'none',
             'fill': 'none',
             'stroke-width': 2,
           });
 
+        // prepare circles?
+        var color;
+        switch(flow.proto){
+          case 1:
+            color = "yellow";
+            break;
+          case 6:
+            color = "blue";
+            break;
+          case 19:
+            color = "red";
+            break;
+          default:
+            color = "black";
+        }
 
-	  for(id = 0; id < circleids.length; id++){
-	flow.append('circle')
-	.attr({
-            'id': "circle" + fnumber.toString() + "-" + id.toString(),
-            'cx': cx,
-            'cy': cy,
-            'r': 5,
-	    'fill':"red",
-          });
-	  }
+        for(i = 0; i < circleids.length; i++){
+          flowmarker.append('circle')
+            .attr({
+              'id': circleids[i],
+              'cx': src.x,
+              'cy': src.y,
+              'r': 5,
+              'fill': color,
+            });
+        }
 
-	  for(id = 0; id < circleids.length; id++){
-		drawpkt(fnumber, id, circleids.length, cx, cy);
-	  };
+        for(index = 0; index < circleids.length; index++){
+          drawpkt(pathid, circleids[index], index, circleids.length, src.x, src.y);
+        };
 
-
-
-
-     }
+      }
 
 
       function drawflows() {
-        for(i = 0; i < objs.length; i++){
-          obj = objs[i];
-	  drawflow(obj, flownum);
-	  flownum += 1;
-	  if(flownum == 1000000){
-		  flownum = 0;
-	  }
+        for(var flowkey in flows){
+          // if flow.display == true then call drawflow()
+          if(flows[flowkey].display){
+            drawflow(flowkey);
+            flowcnt += 1;
+          }
+        };
+        //init flows everytime when recieved data from the socket
+        //flows = [];
+        //flowcnt = 0;
       };
-      objs = [];
-      };
-
-
-
 
 
       function resize(){
-	//alert("resie draw");
+        //alert("resie draw");
         //draw();
       }
+
 
       function $s(elem) {
         return $(document.createElementNS('http://www.w3.org/2000/svg', elem));
       }
 
-      
 
       function add(){
         var $path = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
         var $circle = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'));
-
-        objs.push({
+        flows["test1"] = {
           src:[37, -122],
           dst:[35, 139],
-        });
-        objs.push({
+          display:Boolean(true),
+        };
+        flows["test2"] = {
           src:[50, -100],
           dst:[80, 50],
-        });
-
+          display:Boolean(true),
+        };
         drawflows();
       }
+
     </script>
 
+
+    <!-- for socket.io -->
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
     <script type="text/javascript" charset="utf-8">
-        $(document).ready(function(){
-            namespace = ''; // change to an empty string to use the global namespace
-            var socket = io.connect('http://' + document.domain + ':' + location.port + namespace);
-	    socket.on('pktdata', function(msg) {
-		    for (var i = 0; i < msg.data["data"].length; i++) {
-		    obj = jQuery.parseJSON(msg.data["data"][i]);
-		    objs.push({
-			src:[Number(obj["srclat"]), Number(obj["srclog"])],
-			dst:[Number(obj["dstlat"]), Number(obj["dstlog"])],
-			});
 
-		    };
-        drawflows();
-		    });
+      // make a socket, set an event handler
+      $(document).ready(function(){
+        var namespace = ''; // change to an empty string to use the global namespace
+        var socket = io.connect('http://' + document.domain + ':' + location.port + namespace);
 
+        // called everytime when recieved data from the socket
+        socket.on('pktdata', function(msg) {
+          // register flow info to the flows variable
+          console.log("data size : " + msg.data["data"].length);
+          for (var i = 0; i < msg.data["data"].length; i++) {
+            var flow = jQuery.parseJSON(msg.data["data"][i]);
+            var key = CybozuLabs.MD5.calc(flow["sip"] + flow["dip"] + flow["sport"] + flow["dport"] + flow["proto"]);
+            if (key in flows){
+              continue;
+            }
+            flows[key] = {
+              sip: flow["sip"],
+              dip: flow["dip"],
+              sport: flow["sport"],
+              dport: flow["dport"],
+              proto: flow["proto"],
+              src:[Number(flow["srclat"]), Number(flow["srclog"])],
+              dst:[Number(flow["dstlat"]), Number(flow["dstlog"])],
+              display:Boolean(true),
+            };
+          };
+          console.log("flow size : " + Object.keys(flows).length)
+          drawflows();
         });
-
-
-
+      });
 
     </script>
+
   </body>
 </html>
