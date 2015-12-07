@@ -5,5 +5,5 @@ dependencies:
 
 test:
   override:
-    - pylint *.py
+    - pylint --reports=n --disable=unused-wildcard-import *.py
 
