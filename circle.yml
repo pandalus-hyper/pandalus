@@ -1,0 +1,8 @@
+dependencies:
+  pre:
+    - pip install pylint
+    - npm install -g jslint
+
+test:
+  override:
+    - pylint --reports=n --disable=unused-wildcard-import,e0602 *.py
