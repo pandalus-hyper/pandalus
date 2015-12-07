@@ -172,7 +172,11 @@ def index() :
 
 
 if __name__ == "__main__" :
+  port = int(os.environ.get('PORT'))
+
   t=threading.Thread(target=camera_thread)
   t.setDaemon(True)
   t.start()
-  socketio.run(app, host="0.0.0.0", port=5002)
+
+  socketio.run(app, host="0.0.0.0", port=port)
+
