@@ -51,7 +51,15 @@
 
     <div class="container-fluid">
       <div class="row">
-        <div class="col-xs-2">
+
+        <div class="col-xs-12">
+          <!--map-->
+          <div id="map" style="width: 100vw; height: 95vh;">
+          </div>
+        </div>
+
+<!--
+        <div class="col-xs-1">
           <table class="table text-danger">
             <thead>
               <tr><th>SRC</th><th>DEST</th><th>PORT</th></tr>
@@ -64,11 +72,7 @@
             </tbody>
           </table>
         </div>
-        <div class="col-xs-10">
-          <!--map-->
-          <div id="map" style="width: 80vw; height: 80vh;">
-          </div>
-        </div>
+-->
       </div>
     </div>
 
@@ -81,93 +85,201 @@
     </div>
 
     <link href="{{url_for('static', filename='hacker.css')}}" rel="stylesheet"/>
-
     <script src="{{url_for('static', filename='jquery-1.11.3.js')}}"></script>
     <script src="{{url_for('static', filename='jquery-jvectormap-2.0.3.min.js')}}"></script>
     <script src="{{url_for('static', filename='jquery-jvectormap-world-mill.js')}}"></script>
+    <script src="{{url_for('static', filename='md5.js')}}"></script>
     <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
 
+    <!-- for flow control -->
     <script type="text/javascript">
       var map;
-      var objs = [];
-
-      function draw() {
-        for(i = 0; i < objs.length; i++){
-          obj = objs[i];
-          dst = map.latLngToPoint(obj.src[0], obj.src[1]);
-          src = map.latLngToPoint(obj.dst[0], obj.dst[1]);
-          obj.$.attr({
-            d: "M "+src.x+','+src.y+' A 100,50 0 1,1 '+dst.x+','+dst.y,
-            stroke: "red",
-            fill: "none"
-          })
-        }
-      }
-
-      function resize(){
-        draw();
-      }
-
-      function $s(elem) {
-        return $(document.createElementNS('http://www.w3.org/2000/svg', elem));
-      }
+      var flows = {};
+      var flowmarker;
+      var flowcnt = 0; //also used as 
 
       $(function(){
         $('#map').vectorMap({
           map: 'world_mill',
           onViewportChange: resize,
         });
-        $('#map .jvectormap-container svg').append($s("g").attr("id", "geo"));
-        map = $('#map').vectorMap('get', 'mapObject');
-        console.log(map);
-        
-        $(window).resize(resize);
-      });
-      
+
+      map = document.getElementById("map"); 
+      var g = map.getElementsByTagName("svg")[0].getElementsByTagName("g");
+      g[1].id = "marker"
+          flowmarker = d3.select("#marker");
+          map = $('#map').vectorMap('get', 'mapObject');
+          $(window).resize(resize);
+        });
+
+
+      function drawpkt(pathid, circleid, circleindex, totalpkt, cx, cy){
+        flowmarker.select('#' + circleid)
+          .transition()
+          .duration(700+(1000)/totalpkt*circleindex)
+          .ease("sin")
+          .attrTween('transform', function(d) {
+            return function(t) {
+              var p = flowmarker.select("#"+pathid).node().getPointAtLength(flowmarker.select("#"+pathid).node().getTotalLength()*t);
+              if(t == 1){
+                if(circleid == totalpkt-1){
+                  flowmarker.select("#"+pathid).remove();
+                  flows.
+                  flowcnt -= 1;
+                }
+                flowmarker.select('#' + circleid).remove();
+              }
+              return "translate(" + (p.x-cx) + "," + (p.y-cy) + ")";
+            }
+          })
+      };
+
+
+      function drawflow(flowkey){
+        var flow = flows[flowkey];
+        var src = map.latLngToPoint(flow.src[0], flow.src[1]);
+        var dst = map.latLngToPoint(flow.dst[0], flow.dst[1]);
+        var x1 = 100;
+        var y1 = 0;
+        var x2 = dst.x - src.x;
+        var y2 = dst.y - dst.y;
+        var theta = 360 * Math.atan2(x1*y2-y1*x2, x1*x2+y1*y2)/2/Math.PI
+        var rx = Math.sqrt((dst.x-src.x)*(dst.x-src.x) + (dst.y-src.y)*(dst.y-src.y))/2;
+        var ry = rx/2;
+        var pathid = "path" + flowkey;
+        var circleids = [];
+        var circleid;
+
+        // push circle
+        for(var i = 0; i < 10; i++){  //max : 10 paths
+            circleid = "circle" + flowkey + "-" + i.toString();
+            circleids.push(circleid);
+        }
+
+        // append path
+        flowmarker.append('path').attr({
+            'id':pathid,
+            'd': "M" + src.x + " " + src.y + " A " + rx + " " + ry +"  "+ theta  +" 0 1 " + dst.x + " " + dst.y,
+            'stroke': 'none',
+            'fill': 'none',
+            'stroke-width': 2,
+          });
+
+        // prepare circles?
+        var color;
+        switch(flow.proto){
+          case 1:
+            color = "yellow";
+            break;
+          case 6:
+            color = "blue";
+            break;
+          case 19:
+            color = "red";
+            break;
+          default:
+            color = "black";
+        }
+
+        for(i = 0; i < circleids.length; i++){
+          flowmarker.append('circle')
+            .attr({
+              'id': circleids[i],
+              'cx': src.x,
+              'cy': src.y,
+              'r': 5,
+              'fill': color,
+            });
+        }
+
+        for(index = 0; index < circleids.length; index++){
+          drawpkt(pathid, circleids[index], index, circleids.length, src.x, src.y);
+        };
+
+      }
+
+
+      function drawflows() {
+        for(var flowkey in flows){
+          // if flow.display == true then call drawflow()
+          if(flows[flowkey].display){
+            drawflow(flowkey);
+            flowcnt += 1;
+          }
+        };
+        //init flows everytime when recieved data from the socket
+        //flows = [];
+        //flowcnt = 0;
+      };
+
+
+      function resize(){
+        //alert("resie draw");
+        //draw();
+      }
+
+
+      function $s(elem) {
+        return $(document.createElementNS('http://www.w3.org/2000/svg', elem));
+      }
+
 
       function add(){
         var $path = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-
-        objs.push({
+        var $circle = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'));
+        flows["test1"] = {
           src:[37, -122],
           dst:[35, 139],
-          $:$path
-        });
-
-        $('#geo').prepend($path);
-        draw();
+          display:Boolean(true),
+        };
+        flows["test2"] = {
+          src:[50, -100],
+          dst:[80, 50],
+          display:Boolean(true),
+        };
+        drawflows();
       }
+
     </script>
 
+
+    <!-- for socket.io -->
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js"></script>
     <script type="text/javascript" charset="utf-8">
-        $(document).ready(function(){
-            namespace = ''; // change to an empty string to use the global namespace
 
-            // the socket.io documentation recommends sending an explicit package upon connection
-            // this is specially important when using the global namespace
-            var socket = io.connect('http://' + document.domain + ':' + location.port + namespace);
+      // make a socket, set an event handler
+      $(document).ready(function(){
+        var namespace = ''; // change to an empty string to use the global namespace
+        var socket = io.connect('http://' + document.domain + ':' + location.port + namespace);
 
-            // event handler for server sent data
-            // the data is displayed in the "Received" section of the page
-            socket.on('pktdata', function(msg) {
-		    var $path = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-		    objs = []
-		    for (var i = 0; i < msg.data["data"].length; i++) {
-		    obj = jQuery.parseJSON(msg.data["data"][i]);
-		    objs.push({
-			src:[Number(obj["srclat"]), Number(obj["srclog"])],
-			dst:[Number(obj["dstlat"]), Number(obj["dstlog"])],
-			$:$path
-			});
-		//	console.log("src", Number(msg.data["data"][i]["srclat"]), Number(msg.data["data"][i]["srclog"]))
-		//	console.log("dst", Number(msg.data["data"][i]["dstlat"]), Number(msg.data["data"][i]["dstlog"]))
-		    };
-		    $('#geo').prepend($path);
-		    draw();
-            });
-
+        // called everytime when recieved data from the socket
+        socket.on('pktdata', function(msg) {
+          // register flow info to the flows variable
+          console.log("data size : " + msg.data["data"].length);
+          for (var i = 0; i < msg.data["data"].length; i++) {
+            var flow = jQuery.parseJSON(msg.data["data"][i]);
+            var key = CybozuLabs.MD5.calc(flow["sip"] + flow["dip"] + flow["sport"] + flow["dport"] + flow["proto"]);
+            if (key in flows){
+              continue;
+            }
+            flows[key] = {
+              sip: flow["sip"],
+              dip: flow["dip"],
+              sport: flow["sport"],
+              dport: flow["dport"],
+              proto: flow["proto"],
+              src:[Number(flow["srclat"]), Number(flow["srclog"])],
+              dst:[Number(flow["dstlat"]), Number(flow["dstlog"])],
+              display:Boolean(true),
+            };
+          };
+          console.log("flow size : " + Object.keys(flows).length)
+          drawflows();
         });
+      });
+
     </script>
+
   </body>
 </html>
