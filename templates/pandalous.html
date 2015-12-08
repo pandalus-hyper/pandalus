@@ -97,7 +97,7 @@
       var map;
       var flows = {};
       var flowmarker;
-      var flowcnt = 0; //also used as 
+      var flowcnt = 0;
 
       $(function(){
         $('#map').vectorMap({
@@ -106,8 +106,10 @@
         });
 
       map = document.getElementById("map"); 
-      var g = map.getElementsByTagName("svg")[0].getElementsByTagName("g");
-      g[1].id = "marker"
+      //var g = map.getElementsByTagName("svg")[0].getElementsByTagName("g");
+      //g[1].id = "marker";
+      var svg = map.getElementsByTagName("svg")[0];
+      svg.id = "marker";
           flowmarker = d3.select("#marker");
           map = $('#map').vectorMap('get', 'mapObject');
           $(window).resize(resize);
@@ -117,33 +119,31 @@
       function drawpkt(pathid, circleid, circleindex, totalpkt, cx, cy){
         flowmarker.select('#' + circleid)
           .transition()
-          .duration(700+(1000)/totalpkt*circleindex)
+          .duration(5000+(1000)/totalpkt*circleindex)
           .ease("sin")
           .attrTween('transform', function(d) {
             return function(t) {
-              var p = flowmarker.select("#"+pathid).node().getPointAtLength(flowmarker.select("#"+pathid).node().getTotalLength()*t);
+              var p = flowmarker.select("#"+pathid).node()
+                        .getPointAtLength(flowmarker.select("#"+pathid).node()
+                        .getTotalLength()*t);
               if(t == 1){
-		  var bomb = flowmarker.append("circle")
-		  	.attr("id", circleid + "bomb")
-                	.attr("cx", p.x)
-                	.attr("cy", p.y)
-                	.attr("r", 3)
-			.attr("stroke", "rgba(255, 0, 0, 1.0)")
-                	.attr("fill", "none");
-			
-			bomb.transition().duration(2000)
-			        .attr("r",50)
-				.attr("stroke","rgba(255, 0, 0, 0)")
-				.each("end", function() {flowmarker.select("#" + circleid + "bomb").remove()});
+                var bomb = flowmarker.append("circle")
+                             .attr("id", circleid + "bomb")
+                             .attr("cx", p.x)
+                             .attr("cy", p.y)
+                             .attr("r", 3)
+                             .attr("stroke", "rgba(255, 0, 0, 1.0)")
+                             .attr("fill", "none");
 
+                bomb.transition().duration(2000)
+                  .attr("r",50)
+                  .attr("stroke","rgba(255, 0, 0, 0)")
+                  .each("end", function() {flowmarker.select("#" + circleid + "bomb").remove()});
 
-
-                if(circleid == totalpkt-1){
-                  flowmarker.select("#"+pathid).remove();
-                  flows.
-                  flowcnt -= 1;
-                }
                 flowmarker.select('#' + circleid).remove();
+                if(circleindex == totalpkt-1){
+                  flowmarker.select("#"+pathid).remove();
+                }
               }
               return "translate(" + (p.x-cx) + "," + (p.y-cy) + ")";
             }
@@ -152,36 +152,37 @@
 
 
       function drawflow(flowkey){
+        var rand = Math.floor(Math.random()*100).toString();
         var flow = flows[flowkey];
         var src = map.latLngToPoint(flow.src[0], flow.src[1]);
         var dst = map.latLngToPoint(flow.dst[0], flow.dst[1]);
         var x1 = 100;
         var y1 = 0;
         var x2 = dst.x - src.x;
-        var y2 = dst.y - dst.y;
+        var y2 = dst.y - src.y;
         var theta = 360 * Math.atan2(x1*y2-y1*x2, x1*x2+y1*y2)/2/Math.PI
         var rx = Math.sqrt((dst.x-src.x)*(dst.x-src.x) + (dst.y-src.y)*(dst.y-src.y))/2;
         var ry = rx/2;
-        var pathid = "path" + flowkey;
+        var pathid = "path" + flowkey + rand;
         var circleids = [];
         var circleid;
 
-        // push circle
-        for(var i = 0; i < 10; i++){  //max : 10 paths
-            circleid = "circle" + flowkey + "-" + i.toString();
-            circleids.push(circleid);
-        }
-
         // append path
         flowmarker.append('path').attr({
-            'id':pathid,
-            'd': "M" + src.x + " " + src.y + " A " + rx + " " + ry +"  "+ theta  +" 0 1 " + dst.x + " " + dst.y,
-            'stroke': 'none',
-            'fill': 'none',
-            'stroke-width': 2,
-          });
+          'id':pathid,
+          'd': "M" + src.x + " " + src.y + " A " + rx + " " + ry +"  "+ theta  +" 0 1 " + dst.x + " " + dst.y,
+          'fill': 'none',
+          'stroke': 'purple',
+          'stroke-width': 0.3,
+        });
 
-        // prepare circles?
+        // push circles
+        for(var i = 0; i < 10; i++){  //10 circles to dwar a line
+          circleid = "circle" + flowkey + rand + "-" + i.toString();
+          circleids.push(circleid);
+        }
+
+        // prepare circles
         var color;
         switch(flow.proto){
           case 1:
@@ -197,18 +198,18 @@
             color = "black";
         }
 
-        for(i = 0; i < circleids.length; i++){
+        for(var i = 0; i < circleids.length; i++){
           flowmarker.append('circle')
             .attr({
               'id': circleids[i],
               'cx': src.x,
               'cy': src.y,
-              'r': 5,
+              'r': 5, //flows[flowkey].volume * 3,
               'fill': color,
             });
         }
 
-        for(index = 0; index < circleids.length; index++){
+        for(var index = 0; index < circleids.length; index++){
           drawpkt(pathid, circleids[index], index, circleids.length, src.x, src.y);
         };
 
@@ -220,12 +221,9 @@
           // if flow.display == true then call drawflow()
           if(flows[flowkey].display){
             drawflow(flowkey);
-            flowcnt += 1;
+            flows[flowkey].display = false;
           }
         };
-        //init flows everytime when recieved data from the socket
-        flows = [];
-        flowcnt = 0;
       };
 
 
@@ -246,11 +244,13 @@
         flows["test1"] = {
           src:[37, -122],
           dst:[35, 139],
+          volume:Number(100),
           display:Boolean(true),
         };
         flows["test2"] = {
           src:[50, -100],
           dst:[80, 50],
+          volume:Number(1),
           display:Boolean(true),
         };
         drawflows();
@@ -270,14 +270,39 @@
 
         // called everytime when recieved data from the socket
         socket.on('pktdata', function(msg) {
-          // register flow info to the flows variable
+          // print data num, flow num
           console.log("data size : " + msg.data["data"].length);
+          console.log("flow size : " + flowcnt);
+
+          var keys = [];   // for store every key
+          var traffics = {};  // for store every traffic volume by keys
+
           for (var i = 0; i < msg.data["data"].length; i++) {
             var flow = jQuery.parseJSON(msg.data["data"][i]);
             var key = CybozuLabs.MD5.calc(flow["sip"] + flow["dip"] + flow["sport"] + flow["dport"] + flow["proto"]);
-            if (key in flows){
+
+            /****TEST****/
+            if(flow["dstcount"] != "Japan"){
               continue;
             }
+            /************/
+
+            var j;     //calc traffic volumes of each traffic
+            for (j=0; j<keys.length; j++){
+              if (key == keys[j]){
+                traffics[key] += 1;
+                break;
+              }
+            }
+            if(j!=keys.length){  // if exist
+              continue;
+            }
+            else{                // if not exist
+              traffics[key] = 1;
+              keys.push(key);
+            }
+
+            //register new flow
             flows[key] = {
               sip: flow["sip"],
               dip: flow["dip"],
@@ -286,10 +311,30 @@
               proto: flow["proto"],
               src:[Number(flow["srclat"]), Number(flow["srclog"])],
               dst:[Number(flow["dstlat"]), Number(flow["dstlog"])],
+              lifetime:Number(50),
+              volume:Number(1),
               display:Boolean(true),
             };
+            flowcnt += 1;
           };
-          console.log("flow size : " + Object.keys(flows).length)
+
+          for (var flowkey in flows){ //if no pkts arrived this time then decrease lifetime
+            if (flowkey in keys){
+              continue;
+            }
+            else if (flows[flowkey].lifetime == 0){  //if lifetime == 0 delete the flow
+              delete flows[flowkey];
+              flowcnt -= 1;
+            }
+            else{
+              flows[flowkey].lifetime -= 1;
+            }
+          }
+
+          for (var k=0; k<keys.length; k++){ //set traffic volumes to each traffic
+            flows[keys[k]].volume = traffics[keys[k]];
+          }
+
           drawflows();
         });
       });
