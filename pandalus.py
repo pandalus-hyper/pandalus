@@ -87,6 +87,7 @@ def pcap2json(f):
             dres = geoip.city(randIP[random.randint(0, len(randIP) - 1)])
 
         field_srccount = sres.country.name
+	print field_srccount
         field_srclat = sres.location.latitude
         field_srclog = sres.location.longitude
         field_dstcount = dres.country.name
@@ -176,7 +177,7 @@ def index():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT'))
+    port = 5004
 
     t = threading.Thread(target=camera_thread)
     t.setDaemon(True)
