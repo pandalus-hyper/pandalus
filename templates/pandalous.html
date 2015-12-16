@@ -98,14 +98,21 @@
       var flows = {};
       var flowmarker;
       var flowcnt = 0;
+      var tips = {'test':1};
 
       $(function(){
         $('#map').vectorMap({
           map: 'world_mill',
           onViewportChange: resize,
+          onRegionTipShow: function(e, el, code){
+            var map = $('#map').vectorMap('get', 'mapObject');
+            var name = map.getRegionName(code);
+            el.html(el.html()+'<br>traffic: '+tips[name]);
+            console.log("tip flow size : " + name + tips[name])
+          },
         });
 
-      map = document.getElementById("map"); 
+      map = document.getElementById("map");
       //var g = map.getElementsByTagName("svg")[0].getElementsByTagName("g");
       //g[1].id = "marker";
       var svg = map.getElementsByTagName("svg")[0];
@@ -286,6 +293,14 @@
               continue;
             }
             /************/
+
+            /****Tips data****/
+            if (flow["srccount"] in tips){
+              tips[flow["srccount"]] += 1
+            }else{
+              tips[flow["srccount"]] = 1
+            }
+            /*****************/
 
             var j;     //calc traffic volumes of each traffic
             for (j=0; j<keys.length; j++){
