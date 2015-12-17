@@ -107,7 +107,7 @@
           onRegionTipShow: function(e, el, code){
             var map = $('#map').vectorMap('get', 'mapObject');
             var name = map.getRegionName(code);
-            el.html(el.html()+'<br>traffic: '+tips[name]);
+            el.html(el.html()+'<br>packet: '+tips[name]);
             console.log("tip flow size : " + name + tips[name])
           },
         });
