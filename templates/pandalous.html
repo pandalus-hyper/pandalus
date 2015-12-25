@@ -99,6 +99,7 @@
       var flows = {};
       var flowmarker;
       var flowcnt = 0;
+      var total = {};
 
       $(function(){
         $('#map').vectorMap({
@@ -112,6 +113,9 @@
             var in_flows = _.filter(flows, function(flow){
                   return flow.dstcc == code;
             });
+
+            var country = $('#map').vectorMap('get','mapObject').getRegionName(code);
+            $tip.append($("<div>Total Packets: "+total[country]+"</div>"));
 
             if(0 < _.size(in_flows)){
                 $tip.append($("<div>Inbound:</div>"));
@@ -315,6 +319,13 @@
               continue;
             }
             /************/
+
+            /* traffic of each country */
+            if(flow["srccount"] in total){
+            	total[flow["srccount"]] += 1
+            }else{
+            	total[flow["srccount"]] = 1
+            }
 
             var j;     //calc traffic volumes of each traffic
             for (j=0; j<keys.length; j++){
