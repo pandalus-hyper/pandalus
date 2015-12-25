@@ -86,28 +86,31 @@ def pcap2json(f):
         except Exception as e:
             dres = geoip.city(randIP[random.randint(0, len(randIP) - 1)])
 
+        field_srccc = sres.country.iso_code
         field_srccount = sres.country.name
         field_srclat = sres.location.latitude
         field_srclog = sres.location.longitude
+        field_dstcc = dres.country.iso_code
         field_dstcount = dres.country.name
         field_dstlat = dres.location.latitude
         field_dstlog = dres.location.longitude
 
         ### print ###
-        newp.append(json.dumps({"time": field_time,
+        newp.append({"time": field_time,
                                 "sip": field_srcip,
                                 "dip": field_dstip,
                                 "proto": field_protocol,
                                 "sport": field_srcport,
                                 "dport": field_dstport,
+                                "srccc": field_srccc,
                                 "srccount": field_srccount,
                                 "srclat": field_srclat,
                                 "srclog": field_srclog,
+                                "dstcc": field_dstcc,
                                 "dstcount": field_dstcount,
                                 "dstlat": field_dstlat,
                                 "dstlog": field_dstlog
-                                },
-                               separators=(',', ':')))
+                                })
     newj["data"] = newp
     retjson = newj
 
@@ -153,9 +156,13 @@ def main():
                 ('0' if sec < 10 else '') + str(sec) + '.pcap'
             if (oldfile != newfile and os.path.exists(newfile)):
                 break
+            time.sleep(0.01)
 
         ### pcap -> json ###
-        pcap2json(oldfile)
+        try :
+            pcap2json(oldfile)
+        except MemoryError :
+            pass
         command = ['rm', '-rf', oldfile]
         subprocess.Popen(command).wait()
         oldfile = newfile
@@ -165,7 +172,7 @@ app.debug = True
 socketio = SocketIO(app)
 
 
-def camera_thread():
+def capture_thread():
     main()
 
 
@@ -178,7 +185,7 @@ def index():
 if __name__ == "__main__":
     port = int(os.environ.get('PORT'))
 
-    t = threading.Thread(target=camera_thread)
+    t = threading.Thread(target=capture_thread)
     t.setDaemon(True)
     t.start()
 

@@ -90,6 +90,7 @@
     <script src="{{url_for('static', filename='jquery-jvectormap-world-mill.js')}}"></script>
     <script src="{{url_for('static', filename='md5.js')}}"></script>
     <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="http://underscorejs.org/underscore-min.js"></script>
     <script src="http://d3js.org/d3.v3.min.js"></script>
 
     <!-- for flow control -->
@@ -98,11 +99,44 @@
       var flows = {};
       var flowmarker;
       var flowcnt = 0;
+      var total = {};
 
       $(function(){
         $('#map').vectorMap({
           map: 'world_mill',
           onViewportChange: resize,
+          onRegionTipShow: function(e, tip, code){
+            var $tip = $(tip);
+            var out_flows = _.filter(flows, function(flow){
+                  return flow.srccc == code;
+            });
+            var in_flows = _.filter(flows, function(flow){
+                  return flow.dstcc == code;
+            });
+
+            var country = $('#map').vectorMap('get','mapObject').getRegionName(code);
+            $tip.append($("<div>Total Packets: "+total[country]+"</div>"));
+
+            if(0 < _.size(in_flows)){
+                $tip.append($("<div>Inbound:</div>"));
+            }
+            _.each(in_flows, function(flow){
+                var $flow = $("<div>");
+                $flow.text(flow.sip+":"+flow.sport+"->"+flow.dip+":"+flow.dport+' '
+                      +flow.volume+'pkt/s');
+                $tip.append($flow);
+            });
+
+            if(0 < _.size(out_flows)){
+                $tip.append($("<div>Outbound</div>"));
+            }
+            _.each(out_flows, function(flow){
+                var $flow = $("<div>");
+                $flow.text(flow.sip+":"+flow.sport+"->"+flow.dip+":"+flow.dport+' '
+                      +flow.volume+'pkt/s');
+                $tip.append($flow);
+            });
+          },
         });
 
       map = document.getElementById("map"); 
@@ -228,7 +262,6 @@
 
 
       function resize(){
-        //alert("resie draw");
         //draw();
       }
 
@@ -278,7 +311,7 @@
           var traffics = {};  // for store every traffic volume by keys
 
           for (var i = 0; i < msg.data["data"].length; i++) {
-            var flow = jQuery.parseJSON(msg.data["data"][i]);
+            var flow = msg.data["data"][i];
             var key = CybozuLabs.MD5.calc(flow["sip"] + flow["dip"] + flow["sport"] + flow["dport"] + flow["proto"]);
 
             /****TEST****/
@@ -286,6 +319,13 @@
               continue;
             }
             /************/
+
+            /* traffic of each country */
+            if(flow["srccount"] in total){
+            	total[flow["srccount"]] += 1
+            }else{
+            	total[flow["srccount"]] = 1
+            }
 
             var j;     //calc traffic volumes of each traffic
             for (j=0; j<keys.length; j++){
@@ -303,18 +343,12 @@
             }
 
             //register new flow
-            flows[key] = {
-              sip: flow["sip"],
-              dip: flow["dip"],
-              sport: flow["sport"],
-              dport: flow["dport"],
-              proto: flow["proto"],
-              src:[Number(flow["srclat"]), Number(flow["srclog"])],
-              dst:[Number(flow["dstlat"]), Number(flow["dstlog"])],
-              lifetime:Number(50),
-              volume:Number(1),
-              display:Boolean(true),
-            };
+            flows[key] = flow;
+            flows[key]['src'] = [Number(flow["srclat"]), Number(flow["srclog"])];
+            flows[key]['dst'] = [Number(flow["dstlat"]), Number(flow["dstlog"])];
+            flows[key]['lifetime'] = Number(5);
+            flows[key]['volume'] = Number(1);
+            flows[key]['display'] = Boolean(true);
             flowcnt += 1;
           };
 
