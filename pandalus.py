@@ -177,7 +177,7 @@ def index():
 
 
 if __name__ == "__main__":
-    port = 5004
+    port = int(os.environ.get('PORT'))
 
     t = threading.Thread(target=camera_thread)
     t.setDaemon(True)
