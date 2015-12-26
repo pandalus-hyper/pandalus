@@ -99,12 +99,15 @@
       var flows = {};
       var flowmarker;
       var flowcnt = 0;
+      var highlight = [];
       var total = {};
 
       $(function(){
         $('#map').vectorMap({
           map: 'world_mill',
           onViewportChange: resize,
+          regionsSelectable: true,
+          regionsSelectableOne: true,
           onRegionTipShow: function(e, tip, code){
             var $tip = $(tip);
             var out_flows = _.filter(flows, function(flow){
@@ -153,7 +156,8 @@
       function drawpkt(pathid, circleid, circleindex, totalpkt, cx, cy){
         flowmarker.select('#' + circleid)
           .transition()
-          .duration(5000+(1000)/totalpkt*circleindex)
+          .duration(1500)
+          .delay(100*circleindex)
           .ease("sin")
           .attrTween('transform', function(d) {
             return function(t) {
@@ -200,6 +204,10 @@
         var pathid = "path" + flowkey + rand;
         var circleids = [];
         var circleid;
+        if(flows[flowkey].srccount != "Japan"){
+          var key = map.getRegionkey(flows[flowkey].srccount);
+          highlight.push(key);
+        }
 
         // append path
         flowmarker.append('path').attr({
@@ -229,7 +237,8 @@
             color = "red";
             break;
           default:
-            color = "black";
+            //color = "black";
+            color = "red";
         }
 
         for(var i = 0; i < circleids.length; i++){
@@ -258,6 +267,9 @@
             flows[flowkey].display = false;
           }
         };
+	map.clearSelectedRegions();
+	map.setSelectedRegions(highlight);
+	highlight = [];
       };
 
 
@@ -272,10 +284,9 @@
 
 
       function add(){
-        var $path = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-        var $circle = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'));
         flows["test1"] = {
-          src:[37, -122],
+          src:[38, -97],
+	  srccount:"United States",
           dst:[35, 139],
           volume:Number(100),
           display:Boolean(true),

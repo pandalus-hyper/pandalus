@@ -88,6 +88,7 @@ def pcap2json(f):
 
         field_srccc = sres.country.iso_code
         field_srccount = sres.country.name
+	print field_srccount
         field_srclat = sres.location.latitude
         field_srclog = sres.location.longitude
         field_dstcc = dres.country.iso_code
