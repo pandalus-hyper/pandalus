@@ -41,7 +41,7 @@
             <li class="active"><a href="#">Home</a></li>
             <li><a href="#">About</a></li>
             <li><a href="#">Menu</a></li>
-            <li><a href="#">hogehoge</a></li>
+            <li><a href="#" onclick="move()">Statistics</a></li>
           </ul>
         </div><!--/.nav-collapse -->
 
@@ -49,30 +49,13 @@
     </nav>
 
 
-    <div class="container-fluid">
-      <div class="row">
+    <div style="overflow: hidden;">
 
-        <div class="col-xs-12">
-          <!--map-->
-          <div id="map" style="width: 100vw; height: 95vh;">
-          </div>
-        </div>
+      <div id="statistics" class="table text-danger" style="float: left; width: 100vw; height: 0vh; background-color:#000000; opacity:50" onclick="move();">
+      </div>
 
-<!--
-        <div class="col-xs-1">
-          <table class="table text-danger">
-            <thead>
-              <tr><th>SRC</th><th>DEST</th><th>PORT</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>choruru</td><td>taisho</td><td>22</td></tr>
-              <tr><td>motomu</td><td>taisho</td><td>80</td></tr>
-              <tr><td>hogehoge</td><td>taisho</td><td>443</td></tr>
-              <tr><td>hogehoge</td><td>taisho</td><td>443</td></tr>
-            </tbody>
-          </table>
-        </div>
--->
+
+      <div id="map" style="float: left; width: 100vw; height: 95vh;">
       </div>
     </div>
 
@@ -83,6 +66,7 @@
     <div class="container-fluid">
     Footer
     </div>
+
 
     <link href="{{url_for('static', filename='hacker.css')}}" rel="stylesheet"/>
     <script src="{{url_for('static', filename='jquery-1.11.3.js')}}"></script>
@@ -99,6 +83,11 @@
       var flows = {};
       var flowmarker;
       var flowcnt = 0;
+      var flag = true;
+      var statistics = {};
+      statistics['cnty'] = {};
+      statistics['dport'] = {};
+      statistics['sip'] = {};
       var highlight = [];
       var total = {};
 
@@ -267,9 +256,9 @@
             flows[flowkey].display = false;
           }
         };
-	map.clearSelectedRegions();
-	map.setSelectedRegions(highlight);
-	highlight = [];
+        map.clearSelectedRegions();
+        map.setSelectedRegions(highlight);
+        highlight = [];
       };
 
 
@@ -286,7 +275,7 @@
       function add(){
         flows["test1"] = {
           src:[38, -97],
-	  srccount:"United States",
+          srccount:"United States",
           dst:[35, 139],
           volume:Number(100),
           display:Boolean(true),
@@ -299,6 +288,79 @@
         };
         drawflows();
       }
+
+      function move(){
+        //var mpos = eval(document.getElementById('map').style.height.replace("vw", ""));
+        var spos = eval(document.getElementById('statistics').style.height.replace("vh", ""));
+        var target = 30
+        var speed = 30.0 
+        $('#statistics').html("")
+        if(flag){
+          $('#statistics').html(str)
+          if(spos < target){
+            spos += (target+5 - spos) / speed;
+            if(spos > target) spos = target;
+            mpos = 100 - spos;
+            //document.getElementById('map').style.height = mpos + "vw";
+            document.getElementById('statistics').style.height = spos + "vh";
+            setTimeout("move()", 1);
+          }
+          else{
+            flag = false;
+            var str = '';
+
+            str += '<div style="float: left; width=5vw;"> </div>';
+            str += '<table width="450px" style="float: left; width=33vw;">';
+            str += '<thead>';
+            str += '<tr><th>|</th><th>Source Country</th><th>Traffic</th><th>|</th></tr>';
+            str += '</thead>';
+            str += '<tbody>';
+            for (var key in statistics['cnty']){
+              console.log(statistics['cnty'][key]);
+              str += '<tr><td>|</td><td>'+key+'</td><td>'+statistics['cnty'][key]+'</td><td>|</td></tr>';
+            }
+            str += '</tbody></table>';
+
+            str += '<table width="450px" style="float: left; width=33vw;">';
+            str += '<thead>';
+            str += '<tr><th>|</th><th>Source IP</th><th>Traffic</th><th>|</th></tr>';
+            str += '</thead>';
+            str += '<tbody>';
+            for (var key in statistics['sip']){
+              console.log(statistics['sip'][key]);
+              str += '<tr><td>|</td><td>'+key+'</td><td>'+statistics['sip'][key]+'</td><td>|</td></tr>';
+            }
+            str += '</tbody></table>';
+
+            str += '<table width="450px" style="float: left; width=33vw;">';
+            str += '<thead>';
+            str += '<tr><th>|</th><th>Destination Port</th><th>Traffic</th><th>|</th></tr>';
+            str += '</thead>';
+            str += '<tbody>';
+            for (var key in statistics['dport']){
+              console.log(statistics['dport'][key]);
+              str += '<tr><td>|</td><td>'+key+'</td><td>'+statistics['dport'][key]+'</td><td>|</td></tr>';
+            }
+            str += '</tbody></table>';
+
+            $('#statistics').html(str)
+          }
+        }
+        else{
+          if(spos > 0){
+            spos -= (spos+5 - 0) / speed;
+            if(spos < 0) spos = 0;
+            mpos = 100 - spos;
+            //document.getElementById('map').style.height = mpos + "vw";
+            document.getElementById('statistics').style.height = spos + "vh";
+            setTimeout("move()", 1);
+          }
+          else{
+            flag = true;
+          }
+        }
+      }
+
 
     </script>
 
@@ -323,6 +385,7 @@
 
           for (var i = 0; i < msg.data["data"].length; i++) {
             var flow = msg.data["data"][i];
+            console.log(flow);
             var key = CybozuLabs.MD5.calc(flow["sip"] + flow["dip"] + flow["sport"] + flow["dport"] + flow["proto"]);
 
             /****TEST****/
@@ -333,9 +396,9 @@
 
             /* traffic of each country */
             if(flow["srccount"] in total){
-            	total[flow["srccount"]] += 1
+              total[flow["srccount"]] += 1
             }else{
-            	total[flow["srccount"]] = 1
+              total[flow["srccount"]] = 1
             }
 
             var j;     //calc traffic volumes of each traffic
@@ -361,17 +424,40 @@
             flows[key]['volume'] = Number(1);
             flows[key]['display'] = Boolean(true);
             flowcnt += 1;
+            
+            //for statistics
+            if (flows[key]["srccount"] in statistics['cnty'])
+              statistics['cnty'][flows[key]["srccount"]] += 1;
+            else
+              statistics['cnty'][flows[key]["srccount"]] = 1;
+            if (flows[key]["dport"] in statistics['dport'])
+              statistics['dport'][flows[key]["dport"]] += 1;
+            else
+              statistics['dport'][flows[key]["dport"]] = 1;
+            if (flows[key]["sip"] in statistics['sip'])
+              statistics['sip'][flows[key]["sip"]] += 1;
+            else
+              statistics['sip'][flows[key].sip] = 1;
+
           };
 
           for (var flowkey in flows){ //if no pkts arrived this time then decrease lifetime
-            if (flowkey in keys){
-              continue;
-            }
-            else if (flows[flowkey].lifetime == 0){  //if lifetime == 0 delete the flow
+            if (flows[flowkey].lifetime == 0){  //if lifetime == 0 delete the flow
+              statistics['cnty'][flows[flowkey]["srccount"]] -= 1;
+              statistics['dport'][flows[flowkey]["dport"]] -= 1;
+              statistics['sip'][flows[flowkey]["sip"]] -= 1;
+              if (statistics['cnty'][flows[flowkey]["srccount"]] == 0){
+                delete statistics['cnty'][flows[flowkey]["srccount"]];
+              }
+              if (statistics['dport'][flows[flowkey]["dport"]] == 0){
+                delete statistics['dport'][flows[flowkey]["dport"]];
+              }
+              if (statistics['sip'][flows[flowkey]["sip"]] == 0){
+                delete statistics['sip'][flows[flowkey]["sip"]];
+              }
               delete flows[flowkey];
               flowcnt -= 1;
-            }
-            else{
+            } else{
               flows[flowkey].lifetime -= 1;
             }
           }
