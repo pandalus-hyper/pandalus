@@ -74,6 +74,7 @@
     <script src="{{url_for('static', filename='jquery-jvectormap-world-mill.js')}}"></script>
     <script src="{{url_for('static', filename='md5.js')}}"></script>
     <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="http://underscorejs.org/underscore-min.js"></script>
     <script src="http://d3js.org/d3.v3.min.js"></script>
 
     <!-- for flow control -->
@@ -87,11 +88,47 @@
       statistics['cnty'] = {};
       statistics['dport'] = {};
       statistics['sip'] = {};
+      var highlight = [];
+      var total = {};
 
       $(function(){
         $('#map').vectorMap({
           map: 'world_mill',
           onViewportChange: resize,
+          regionsSelectable: true,
+          regionsSelectableOne: true,
+          onRegionTipShow: function(e, tip, code){
+            var $tip = $(tip);
+            var out_flows = _.filter(flows, function(flow){
+                  return flow.srccc == code;
+            });
+            var in_flows = _.filter(flows, function(flow){
+                  return flow.dstcc == code;
+            });
+
+            var country = $('#map').vectorMap('get','mapObject').getRegionName(code);
+            $tip.append($("<div>Total Packets: "+total[country]+"</div>"));
+
+            if(0 < _.size(in_flows)){
+                $tip.append($("<div>Inbound:</div>"));
+            }
+            _.each(in_flows, function(flow){
+                var $flow = $("<div>");
+                $flow.text(flow.sip+":"+flow.sport+"->"+flow.dip+":"+flow.dport+' '
+                      +flow.volume+'pkt/s');
+                $tip.append($flow);
+            });
+
+            if(0 < _.size(out_flows)){
+                $tip.append($("<div>Outbound</div>"));
+            }
+            _.each(out_flows, function(flow){
+                var $flow = $("<div>");
+                $flow.text(flow.sip+":"+flow.sport+"->"+flow.dip+":"+flow.dport+' '
+                      +flow.volume+'pkt/s');
+                $tip.append($flow);
+            });
+          },
         });
 
       map = document.getElementById("map"); 
@@ -108,7 +145,8 @@
       function drawpkt(pathid, circleid, circleindex, totalpkt, cx, cy){
         flowmarker.select('#' + circleid)
           .transition()
-          .duration(5000+(1000)/totalpkt*circleindex)
+          .duration(1500)
+          .delay(100*circleindex)
           .ease("sin")
           .attrTween('transform', function(d) {
             return function(t) {
@@ -155,6 +193,10 @@
         var pathid = "path" + flowkey + rand;
         var circleids = [];
         var circleid;
+        if(flows[flowkey].srccount != "Japan"){
+          var key = map.getRegionkey(flows[flowkey].srccount);
+          highlight.push(key);
+        }
 
         // append path
         flowmarker.append('path').attr({
@@ -184,7 +226,8 @@
             color = "red";
             break;
           default:
-            color = "black";
+            //color = "black";
+            color = "red";
         }
 
         for(var i = 0; i < circleids.length; i++){
@@ -213,11 +256,13 @@
             flows[flowkey].display = false;
           }
         };
+        map.clearSelectedRegions();
+        map.setSelectedRegions(highlight);
+        highlight = [];
       };
 
 
       function resize(){
-        //alert("resie draw");
         //draw();
       }
 
@@ -228,10 +273,9 @@
 
 
       function add(){
-        var $path = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
-        var $circle = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'));
         flows["test1"] = {
-          src:[37, -122],
+          src:[38, -97],
+          srccount:"United States",
           dst:[35, 139],
           volume:Number(100),
           display:Boolean(true),
@@ -340,7 +384,8 @@
           var traffics = {};  // for store every traffic volume by keys
 
           for (var i = 0; i < msg.data["data"].length; i++) {
-            var flow = jQuery.parseJSON(msg.data["data"][i]);
+            var flow = msg.data["data"][i];
+            console.log(flow);
             var key = CybozuLabs.MD5.calc(flow["sip"] + flow["dip"] + flow["sport"] + flow["dport"] + flow["proto"]);
 
             /****TEST****/
@@ -348,6 +393,13 @@
               continue;
             }
             /************/
+
+            /* traffic of each country */
+            if(flow["srccount"] in total){
+              total[flow["srccount"]] += 1
+            }else{
+              total[flow["srccount"]] = 1
+            }
 
             var j;     //calc traffic volumes of each traffic
             for (j=0; j<keys.length; j++){
@@ -365,59 +417,47 @@
             }
 
             //register new flow
-            flows[key] = {
-              sip: flow["sip"],
-              dip: flow["dip"],
-              sport: flow["sport"],
-              dport: flow["dport"],
-              proto: flow["proto"],
-              scnty: flow["srccount"],
-              dcnty: flow["dstcount"],
-              src:[Number(flow["srclat"]), Number(flow["srclog"])],
-              dst:[Number(flow["dstlat"]), Number(flow["dstlog"])],
-              lifetime:Number(50),
-              volume:Number(1),
-              display:Boolean(true),
-            };
+            flows[key] = flow;
+            flows[key]['src'] = [Number(flow["srclat"]), Number(flow["srclog"])];
+            flows[key]['dst'] = [Number(flow["dstlat"]), Number(flow["dstlog"])];
+            flows[key]['lifetime'] = Number(5);
+            flows[key]['volume'] = Number(1);
+            flows[key]['display'] = Boolean(true);
             flowcnt += 1;
             
             //for statistics
-            if (flows[key].scnty in statistics['cnty'])
-              statistics['cnty'][flows[key].scnty] += 1;
+            if (flows[key]["srccount"] in statistics['cnty'])
+              statistics['cnty'][flows[key]["srccount"]] += 1;
             else
-              statistics['cnty'][flows[key].scnty] = 1;
-            if (flows[key].dport in statistics['dport'])
-              statistics['dport'][flows[key].dport] += 1;
+              statistics['cnty'][flows[key]["srccount"]] = 1;
+            if (flows[key]["dport"] in statistics['dport'])
+              statistics['dport'][flows[key]["dport"]] += 1;
             else
-              statistics['dport'][flows[key].dport] = 1;
-            if (flows[key].sip in statistics['sip'])
-              statistics['sip'][flows[key].sip] += 1;
+              statistics['dport'][flows[key]["dport"]] = 1;
+            if (flows[key]["sip"] in statistics['sip'])
+              statistics['sip'][flows[key]["sip"]] += 1;
             else
               statistics['sip'][flows[key].sip] = 1;
 
           };
 
           for (var flowkey in flows){ //if no pkts arrived this time then decrease lifetime
-            if (flowkey in keys){
-              continue;
-            }
-            else if (flows[flowkey].lifetime == 0){  //if lifetime == 0 delete the flow
-              statistics['cnty'][flows[key.scnty]] -= 1;
-              statistics['dport'][flows[key].dport] -= 1;
-              statistics['sip'][flows[key].sip] -= 1;
-              if (statistics['cnty'][flows[key].scnty] == 0){
-                delete statistics['cnty'][flows[key].scnty];
+            if (flows[flowkey].lifetime == 0){  //if lifetime == 0 delete the flow
+              statistics['cnty'][flows[flowkey]["srccount"]] -= 1;
+              statistics['dport'][flows[flowkey]["dport"]] -= 1;
+              statistics['sip'][flows[flowkey]["sip"]] -= 1;
+              if (statistics['cnty'][flows[flowkey]["srccount"]] == 0){
+                delete statistics['cnty'][flows[flowkey]["srccount"]];
               }
-              if (statistics['dport'][flows[key].dport] == 0){
-                delete statistics['dport'][flows[key].dport];
+              if (statistics['dport'][flows[flowkey]["dport"]] == 0){
+                delete statistics['dport'][flows[flowkey]["dport"]];
               }
-              if (statistics['sip'][flows[key].sip] == 0){
-                delete statistics['sip'][flows[key].sip];
+              if (statistics['sip'][flows[flowkey]["sip"]] == 0){
+                delete statistics['sip'][flows[flowkey]["sip"]];
               }
               delete flows[flowkey];
               flowcnt -= 1;
-            }
-            else{
+            } else{
               flows[flowkey].lifetime -= 1;
             }
           }
