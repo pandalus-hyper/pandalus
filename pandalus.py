@@ -80,11 +80,11 @@ def pcap2json(f):
         try:
             sres = geoip.city(field_srcip)
         except Exception as e:
-            sres = geoip.city(randIP[random.randint(0, len(randIP) - 1)])
+            continue
         try:
             dres = geoip.city(field_dip)
         except Exception as e:
-            dres = geoip.city(randIP[random.randint(0, len(randIP) - 1)])
+            continue
 
         field_srccc = sres.country.iso_code
         field_srccount = sres.country.name
