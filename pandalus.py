@@ -86,6 +86,9 @@ def pcap2json(f):
         except Exception as e:
             continue
 
+        if(sres=="Japan"):
+          continue
+
         field_srccc = sres.country.iso_code
         field_srccount = sres.country.name
         field_srclat = sres.location.latitude
@@ -121,7 +124,7 @@ def pcap2json(f):
 
 
 def tcpdump():
-    command = 'tcpdump -i eth0 -G 1 -Uw ./traffic/%S.pcap'.split(' ')
+    command = 'tcpdump ip -i eth0 -G 1 -Uw ./traffic/%S.pcap'.split(' ')
     try:
         subprocess.Popen(command)
     except:
