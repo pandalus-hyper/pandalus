@@ -41,6 +41,7 @@ retjson = ""
 
 def pcap2json(f):
     """pcap -> json, print"""
+    cnt=0
 
 
     pkts = rdpcap(f)
@@ -49,6 +50,9 @@ def pcap2json(f):
     for pkt in pkts:
         field_time = pkt.time
 
+	cnt+=1
+	if(cnt==30):
+            break
         # get l3proto ###$
         try:
             l3proto = pkt.type
@@ -67,24 +71,36 @@ def pcap2json(f):
 
         ### get srcport, dstport ###
         if field_protocol == PROTOCOL_ICMP:
-            field_srcport, field_dstport = pkt[ICMP].type, pkt[ICMP].code
+            try:
+            	field_srcport, field_dstport = pkt[ICMP].type, pkt[ICMP].code
+            except:
+                continue
         elif field_protocol == PROTOCOL_ICMP6:
-            field_srcport, field_dstport = pkt[ICMP6].type, pkt[ICMP6].code
+            try:
+                field_srcport, field_dstport = pkt[ICMP6].type, pkt[ICMP6].code
+            except:
+                continue
         elif field_protocol == PROTOCOL_TCP:
-            field_srcport, field_dstport = pkt[TCP].sport, pkt[TCP].dport
+            try:
+                field_srcport, field_dstport = pkt[TCP].sport, pkt[TCP].dport
+            except:
+                continue
         elif field_protocol == PROTOCOL_UDP:
-            field_srcport, field_dstport = pkt[UDP].sport, pkt[UDP].dport
+            try:
+                field_srcport, field_dstport = pkt[UDP].sport, pkt[UDP].dport
+            except:
+                continue
         else:
             continue
 
         try:
-            sres = geoip.city(field_srcip)
+        	sres = geoip.city(field_srcip)
         except Exception as e:
-            continue
+		continue
         try:
-            dres = geoip.city(field_dip)
+        	dres = geoip.city(field_dstip)
         except Exception as e:
-            continue
+		continue
 
 
         field_srccc = sres.country.iso_code
@@ -96,8 +112,8 @@ def pcap2json(f):
         field_dstlat = dres.location.latitude
         field_dstlog = dres.location.longitude
 
-        if(field_srccc=="Japan"):
-          continue
+       	if(field_srccc=="Japan"):
+		continue
 
         ### print ###
         newp.append({"time": field_time,

@@ -292,7 +292,7 @@
       function move(){
         //var mpos = eval(document.getElementById('map').style.height.replace("vw", ""));
         var spos = eval(document.getElementById('statistics').style.height.replace("vh", ""));
-        var target = 30
+        var target = 50
         var speed = 30.0 
         $('#statistics').html("")
         if(flag){
@@ -377,15 +377,15 @@
         // called everytime when recieved data from the socket
         socket.on('pktdata', function(msg) {
           // print data num, flow num
-          console.log("data size : " + msg.data["data"].length);
-          console.log("flow size : " + flowcnt);
+          //console.log("data size : " + msg.data["data"].length);
+          //console.log("flow size : " + flowcnt);
 
           var keys = [];   // for store every key
           var traffics = {};  // for store every traffic volume by keys
 
           for (var i = 0; i < msg.data["data"].length; i++) {
             var flow = msg.data["data"][i];
-            console.log(flow);
+            //console.log(flow);
             var key = CybozuLabs.MD5.calc(flow["sip"] + flow["dip"] + flow["sport"] + flow["dport"] + flow["proto"]);
 
             /****TEST****/
