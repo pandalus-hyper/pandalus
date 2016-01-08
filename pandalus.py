@@ -86,8 +86,6 @@ def pcap2json(f):
         except Exception as e:
             continue
 
-        if(sres=="Japan"):
-          continue
 
         field_srccc = sres.country.iso_code
         field_srccount = sres.country.name
@@ -97,6 +95,9 @@ def pcap2json(f):
         field_dstcount = dres.country.name
         field_dstlat = dres.location.latitude
         field_dstlog = dres.location.longitude
+
+        if(field_srccc=="Japan"):
+          continue
 
         ### print ###
         newp.append({"time": field_time,
